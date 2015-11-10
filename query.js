@@ -71,6 +71,7 @@ function dates_between(var ISOdate1 = ,var ISOtime1, var ISOdate2, var ISOtime2)
 var toDate = moment()._d;
 var fromDate = moment().subtract('1','month').startOf('day')._d;
 
+
 var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,sessionEndMinutes,session){
 
 	getdata.aggregate([{$match : { date: { "$gte" : fromDate,"$lte" : toDate}}},{ "$redact": {
@@ -114,16 +115,18 @@ var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,ses
 		}
 		else{
 			
+			
 				var y_variables = ["totalTxWifi","totalRxWifi","totalTxCell","totalRxCell" ];
 				//var x_variables = ["Morning", "AfterNoon", "Evening", "Night", "Early Morning"];
-				var givejson = function(session_val,data_type,data_val){
+				var givejson = function(session_val, data_type, data_val){
 					var plotjson = {
 							"Session" : session_val,
 							"type" : data_type,
 							"data" : data_val
-					}
+							}
 					return plotjson;
 				}
+				
 				
 				if(docs.length == 0){					
 				    for(var j=0; j< 4; j++){
@@ -140,19 +143,17 @@ var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,ses
 					    console.log(docs[i]);	
 						//console.log("hello");
 						//console.log(docs[i].date.toISOString());
-					    for(var j=0; j< 4; j++){
-					    	 temp= "docs[" + i + "]" + "." +  y_variables[j]
-					    	 
-					    	var jsondata = givejson(session,y_variables[j],temp);
-							fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
+					    var jsondata = givejson(session,"totalTxWifi",docs[i].totalTxWifi)
+					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
+					    var jsondata = givejson(session,"totalRxWifi",docs[i].totalRxWifi)
+					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
+					    var jsondata = givejson(session,"totalTxCell",docs[i].totalTxCell)
+					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
+					    var jsondata = givejson(session,"totalRxCell",docs[i].totalRxCell)
+					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
 					    }
-						
 					}
-					
 				}
-				
-				
-			}
 		});
 }
 
