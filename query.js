@@ -71,45 +71,39 @@ function dates_between(var ISOdate1 = ,var ISOtime1, var ISOdate2, var ISOtime2)
 var toDate = moment()._d;
 var fromDate = moment().subtract('1','month').startOf('day')._d;
 
-/*another query for embedded data*/
+
+
+
 
 var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,sessionEndMinutes,session){
+	
 
-	getdata.aggregate([{$unwind : '$data' },{$match : { "data.date" : { "$gte" : fromDate,"$lte" : toDate}}},{ "$redact": {
-	    "$cond": {
-	        "if": {
-	            "$and": [
-	                { "$gte": [
-	                    { "$add": [
-	                        { "$hour": "$data.date" },
-	                        { "$divide": [{ "$minute": "$data.date" }, 60] }
-	                    ]},
-	                    //morning_start.hours() + (morning_start.minutes()/60)
-	                    sessionStartHours + (sessionStartMinutes/60)
-	                ]},
-	                { "$lte": [
-	                    { "$add": [
-	                        { "$hour": "$data.date" },
-	                        { "$divide": [{ "$minute": "$data.date" }, 60] }
-	                    ]},
-	                    //morning_end.hours() + (morning_end.minutes()/60)
-	                    sessionEndHours + (sessionEndMinutes/60)
-	                ]}
-	            ]
-	        },
-	        "then": "$$KEEP",
-	        "else": "$$PRUNE"
-	    }
-	}},{ $group: {_id : null,
+	getdata.aggregate([{$unwind : '$data' },{$match : { "data.date" : { "$gte" : fromDate,"$lte" : toDate}}},
+	                 
+	                   {$project :{ "time" : { "$add": [
+	                                                    { "$hour": "$data.date" },
+	                        	                        { "$divide": [{ "$minute": "$data.date" }, 60] }
+	                        	                    ]}, "data.date" : 1,"data.txwifi":1,"data.rxwifi" : 1,"data.txcell" : 1, "data.rxcell" :1, "_id" : 0  } },
+	                   {$match :  { "$and": [
+	                                          { "time" : { "$gt":  sessionStartHours + (sessionStartMinutes/60)}},
+	                                          
+	                                          { "time" :{ "$lt":   sessionEndHours + (sessionEndMinutes/60) }}
+	                                        ] },
+	                   	},
+	                          
+	     { $group: {_id : null,
 		 totalTxWifi : { $avg : "$data.txwifi"},
 		 totalRxWifi : { $avg : "$data.rxwifi"},
 		 totalTxCell : { $avg : "$data.txcell"},
 		 totalRxCell : { $avg : "$data.rxcell"} } 
- }],function(err,docs){
+ } ],function(err,docs){
 		if(err){
 			console.log(err);
 		}
 		else{			
+			console.log(session);
+			console.log(docs);
+			
 				var y_variables = ["totalTxWifi","totalRxWifi","totalTxCell","totalRxCell" ];
 				//var x_variables = ["Morning", "AfterNoon", "Evening", "Night", "Early Morning"];
 				var givejson = function(session_val, data_type, data_val){
@@ -122,7 +116,7 @@ var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,ses
 				}
 				
 				
-				if(docs.length == 0){					
+				if(docs.length == 0){			
 				    for(var j=0; j< 4; j++){
 				    	
 				    	var empty = givejson(session,y_variables[j],0);
@@ -131,7 +125,8 @@ var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,ses
 					
 				}
 				else{
-					
+						console.log("success");
+						console.log(docs.length);
 					for(var i =0 ; i < docs.length;i++){ // this for loop has no significance, any way length would be 1  
 						docs[i].Session = session;
 					    console.log(docs[i]);	
@@ -154,96 +149,6 @@ var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,ses
 
 
 
-
-
-
-
-/*
-var getData = function(sessionStartHours,sessionStartMinutes,sessionEndHours,sessionEndMinutes,session){
-
-	getdata.aggregate([{$match : { date: { "$gte" : fromDate,"$lte" : toDate}}},{ "$redact": {
-	    "$cond": {
-	        "if": {
-	            "$and": [
-	                { "$gte": [
-	                    { "$add": [
-	                        { "$hour": "$date" },
-	                        { "$divide": [{ "$minute": "$date" }, 60] }
-	                    ]},
-	                    //morning_start.hours() + (morning_start.minutes()/60)
-	                    sessionStartHours + (sessionStartMinutes/60)
-	                ]},
-	                { "$lte": [
-	                    { "$add": [
-	                        { "$hour": "$date" },
-	                        { "$divide": [{ "$minute": "$date" }, 60] }
-	                    ]},
-	                    //morning_end.hours() + (morning_end.minutes()/60)
-	                    sessionEndHours + (sessionEndMinutes/60)
-	                ]}
-	            ]
-	        },
-	        "then": "$$KEEP",
-	        "else": "$$PRUNE"
-	    }
-	}},{
-		$group: {
-			_id : null,
-			totalTxWifi : { $avg : "$txwifi"},
-			totalRxWifi : { $avg : "$rxwifi"},
-			totalTxCell : { $avg : "$txcell"},
-			totalRxCell : { $avg : "$rxcell"},
-			 
-			//"AfterNoon", "Evening", "Night", "Early Morning"
-		}
-	} ],function(err,docs){
-		if(err){
-			console.log(err);
-		}
-		else{
-			
-			
-				var y_variables = ["totalTxWifi","totalRxWifi","totalTxCell","totalRxCell" ];
-				//var x_variables = ["Morning", "AfterNoon", "Evening", "Night", "Early Morning"];
-				var givejson = function(session_val, data_type, data_val){
-					var plotjson = {
-							"Session" : session_val,
-							"type" : data_type,
-							"data" : data_val
-							}
-					return plotjson;
-				}
-				
-				
-				if(docs.length == 0){					
-				    for(var j=0; j< 4; j++){
-				    	
-				    	var empty = givejson(session,y_variables[j],0);
-						fs.appendFileSync(jsonFile, JSON.stringify(empty));
-				    }
-					
-				}
-				else{
-					
-					for(var i =0 ; i < docs.length;i++){
-						docs[i].Session = session;
-					    console.log(docs[i]);	
-						//console.log("hello");
-						//console.log(docs[i].date.toISOString());
-					    var jsondata = givejson(session,"totalTxWifi",docs[i].totalTxWifi)
-					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
-					    var jsondata = givejson(session,"totalRxWifi",docs[i].totalRxWifi)
-					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
-					    var jsondata = givejson(session,"totalTxCell",docs[i].totalTxCell)
-					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
-					    var jsondata = givejson(session,"totalRxCell",docs[i].totalRxCell)
-					    fs.appendFileSync(jsonFile, JSON.stringify(jsondata));
-					    }
-					}
-				}
-		});
-}
-*/
 
 getData(morning_start.hours(),morning_start.minutes(),morning_end.hours(),morning_end.minutes(),"Morning");
 getData(afternoon_start.hours(),afternoon_start.minutes(),afternoon_end.hours(),afternoon_end.minutes(),"AfterNoon");
